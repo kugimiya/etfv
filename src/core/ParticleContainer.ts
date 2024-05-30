@@ -16,6 +16,10 @@ export class ParticleContainer {
   prev_y: Float64Array;
   prev_z: Float64Array; // but, now uncalculated
 
+  acceleration_x: Float64Array;
+  acceleration_y: Float64Array;
+  acceleration_z: Float64Array; // but, now uncalculated
+
   mass: Float64Array;
   radius: Float64Array;
 
@@ -29,6 +33,10 @@ export class ParticleContainer {
     this.prev_x = ParticleContainer.make_array(count);
     this.prev_y = ParticleContainer.make_array(count);
     this.prev_z = ParticleContainer.make_array(count);
+
+    this.acceleration_x = ParticleContainer.make_array(count);
+    this.acceleration_y = ParticleContainer.make_array(count);
+    this.acceleration_z = ParticleContainer.make_array(count);
 
     this.mass = ParticleContainer.make_array(count);
     this.radius = ParticleContainer.make_array(count);

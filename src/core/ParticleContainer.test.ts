@@ -29,6 +29,9 @@ describe("inspect constructing", () => {
       container.prev_x.length,
       container.prev_y.length,
       container.prev_z.length,
+      container.acceleration_x.length,
+      container.acceleration_y.length,
+      container.acceleration_z.length,
       container.mass.length,
       container.radius.length,
     ]);
@@ -45,5 +48,8 @@ describe("inspect constructing", () => {
     assert.notEqual(container.prev_z, container.mass);
     assert.notEqual(container.mass, container.radius);
     assert.notEqual(container.x, container.radius);
+    assert.notEqual(container.radius, container.acceleration_x);
+    assert.notEqual(container.acceleration_x, container.acceleration_y);
+    assert.notEqual(container.acceleration_y, container.acceleration_z);
   });
 });

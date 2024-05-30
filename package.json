@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --experimental-test-coverage --test dist",
+    "start": "node ./dist/index.js",
+    "test": "node --experimental-test-coverage --test ./dist",
     "build": "tsc"
   },
   "keywords": [],
