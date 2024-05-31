@@ -1,4 +1,5 @@
 import { ParticleContainer } from "./ParticleContainer";
+import { VectorMath } from "./VectorMath";
 
 type WorldParams = {
   particles_count: number;
@@ -43,7 +44,44 @@ export class World {
 
   update_particles_pos() {}
 
-  update_gravity_acc() {}
+  /*
+   * NOTE: It's bruteforce method
+   */
+  update_gravity_acc() {
+    for (let i = 0; i < this.particles.count; i++) {
+      for (let j = i; j < this.particles.count; j++) {
+        if (i === j) continue;
+
+        const velocity_squared = VectorMath.lengthSquared(
+          VectorMath.subtract([this.particles.x[i], this.particles.y[i]], [this.particles.x[j], this.particles.y[j]]),
+        );
+        const force = this.g_constant * ((this.particles.mass[i] * this.particles.mass[j]) / velocity_squared);
+        const acceleration = force / Math.sqrt(velocity_squared);
+
+        const particle1_acceleration = VectorMath.add(
+          [this.particles.acceleration_x[i], this.particles.acceleration_y[i]],
+          VectorMath.multiply(
+            VectorMath.subtract([this.particles.x[j], this.particles.y[j]], [this.particles.x[i], this.particles.y[i]]),
+            acceleration,
+          ),
+        );
+
+        this.particles.acceleration_x[i] = particle1_acceleration[0];
+        this.particles.acceleration_y[i] = particle1_acceleration[1];
+
+        const particle2_acceleration = VectorMath.add(
+          [this.particles.acceleration_x[j], this.particles.acceleration_y[j]],
+          VectorMath.multiply(
+            VectorMath.subtract([this.particles.x[i], this.particles.y[i]], [this.particles.x[j], this.particles.y[j]]),
+            acceleration,
+          ),
+        );
+
+        this.particles.acceleration_x[j] = particle2_acceleration[0];
+        this.particles.acceleration_y[j] = particle2_acceleration[1];
+      }
+    }
+  }
 
   resolve_collisions() {}
 

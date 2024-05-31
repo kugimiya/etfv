@@ -1,6 +1,6 @@
 import { World } from "./core/World";
 
-const ticks_count = 1024;
+const ticks_count = 10;
 const world = new World({
   particles_count: 2048,
 });
