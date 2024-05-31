@@ -1,5 +1,8 @@
+import { cpus } from "node:os";
+import { ETP } from "etp-ts";
 import { ParticleContainer } from "./ParticleContainer";
-import { VectorMath } from "./VectorMath";
+import { main as gravity_etps, Params as GravityETPsParams } from "./ETPs/gravity";
+import { readFileSync } from "node:fs";
 
 type WorldParams = {
   particles_count: number;
@@ -9,7 +12,10 @@ type WorldParams = {
   time_delta?: number;
 };
 
+const CPU_CORES = cpus().length;
+
 export class World {
+  etp_gravity: ETP<GravityETPsParams, null>;
   particles: ParticleContainer;
 
   world_size: number;
@@ -20,6 +26,7 @@ export class World {
 
   constructor({ particles_count, world_size, g_constant, sub_stepping, time_delta }: WorldParams) {
     this.particles = new ParticleContainer(particles_count);
+    this.etp_gravity = new ETP(CPU_CORES, gravity_etps, readFileSync(`${__dirname}/VectorMath.js`).toString());
 
     this.world_size = world_size || 1024;
     this.g_constant = g_constant || 6.67445;
@@ -28,9 +35,21 @@ export class World {
     this.time_delta_subbed = this.time_delta / this.sub_stepping;
   }
 
-  update() {
+  randomize_positions() {
+    for (let i = 0; i < this.particles.count; i++) {
+      this.particles.mass[i] = Math.random() * 10;
+
+      this.particles.x[i] = Math.random() * 1000;
+      this.particles.y[i] = Math.random() * 1000;
+
+      this.particles.prev_x[i] = this.particles.x[i] - Math.random() * 2;
+      this.particles.prev_y[i] = this.particles.y[i] - Math.random() * 2;
+    }
+  }
+
+  async update() {
     try {
-      this.update_gravity_acc();
+      await this.update_gravity_acc();
 
       for (let i = 0; i < this.sub_stepping; i++) {
         this.resolve_collisions();
@@ -45,41 +64,30 @@ export class World {
   update_particles_pos() {}
 
   /*
-   * NOTE: It's bruteforce method
+   * NOTE: It's parrallelized bruteforce method
    */
-  update_gravity_acc() {
-    for (let i = 0; i < this.particles.count; i++) {
-      for (let j = i; j < this.particles.count; j++) {
-        if (i === j) continue;
+  async update_gravity_acc() {
+    for (let i = 0; i < this.particles.count; i += CPU_CORES) {
+      const promises: Promise<null>[] = [];
 
-        const velocity_squared = VectorMath.lengthSquared(
-          VectorMath.subtract([this.particles.x[i], this.particles.y[i]], [this.particles.x[j], this.particles.y[j]]),
+      for (let sub_i = i; sub_i < CPU_CORES; sub_i++) {
+        if (sub_i > this.particles.count - 1) continue;
+
+        promises.push(
+          this.etp_gravity.do_work([
+            sub_i,
+            this.particles.count,
+            this.g_constant,
+            this.particles.x,
+            this.particles.y,
+            this.particles.acceleration_x,
+            this.particles.acceleration_y,
+            this.particles.mass,
+          ]),
         );
-        const force = this.g_constant * ((this.particles.mass[i] * this.particles.mass[j]) / velocity_squared);
-        const acceleration = force / Math.sqrt(velocity_squared);
-
-        const particle1_acceleration = VectorMath.add(
-          [this.particles.acceleration_x[i], this.particles.acceleration_y[i]],
-          VectorMath.multiply(
-            VectorMath.subtract([this.particles.x[j], this.particles.y[j]], [this.particles.x[i], this.particles.y[i]]),
-            acceleration,
-          ),
-        );
-
-        this.particles.acceleration_x[i] = particle1_acceleration[0];
-        this.particles.acceleration_y[i] = particle1_acceleration[1];
-
-        const particle2_acceleration = VectorMath.add(
-          [this.particles.acceleration_x[j], this.particles.acceleration_y[j]],
-          VectorMath.multiply(
-            VectorMath.subtract([this.particles.x[i], this.particles.y[i]], [this.particles.x[j], this.particles.y[j]]),
-            acceleration,
-          ),
-        );
-
-        this.particles.acceleration_x[j] = particle2_acceleration[0];
-        this.particles.acceleration_y[j] = particle2_acceleration[1];
       }
+
+      await Promise.all(promises);
     }
   }
 
