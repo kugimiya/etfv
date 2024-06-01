@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/index.js",
+    "compile": "ffmpeg -framerate 60 -pattern_type glob -i 'output/*.png' -c:v libx264 -pix_fmt yuv420p out.mp4",
     "test": "node --experimental-test-coverage --test ./dist",
     "build": "tsc"
   },
@@ -13,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^20.12.13",
+    "canvas": "^2.11.2",
     "etp-ts": "^1.0.6",
     "typescript": "^5.4.5"
   }
