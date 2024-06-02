@@ -3,6 +3,7 @@ import { ETP } from "etp-ts";
 import { ParticleContainer } from "./ParticleContainer";
 import { main as gravity_etps, Params as GravityETPsParams } from "./ETPs/gravity";
 import { main as upd_pos_etps, Params as UpdPosETPsParams } from "./ETPs/upd_pos";
+import { main as apply_constr_etps, Params as ApplCnstrETPsParams } from "./ETPs/apply_constraints";
 import { readFileSync } from "node:fs";
 
 type WorldParams = {
@@ -19,6 +20,7 @@ const ETP_DEPS = [readFileSync(`${__dirname}/VectorMath.js`).toString()].join("\
 export class World {
   etp_gravity: ETP<GravityETPsParams, null>;
   etp_upd_pos: ETP<UpdPosETPsParams, null>;
+  etp_apply_constraints: ETP<ApplCnstrETPsParams, null>;
   particles: ParticleContainer;
 
   world_size: number;
@@ -31,6 +33,7 @@ export class World {
     this.particles = new ParticleContainer(particles_count);
     this.etp_gravity = new ETP(CPU_CORES, gravity_etps, ETP_DEPS);
     this.etp_upd_pos = new ETP(CPU_CORES, upd_pos_etps, ETP_DEPS);
+    this.etp_apply_constraints = new ETP(CPU_CORES, apply_constr_etps, ETP_DEPS);
 
     this.world_size = world_size || 1024;
     this.g_constant = g_constant || 6.67445;
@@ -47,18 +50,17 @@ export class World {
     const center = this.world_size / 2;
 
     for (let i = 0; i < this.particles.count; i++) {
-      const angle = Math.random() * Math.PI * 2;
       this.particles.mass[i] = Math.random() * 10;
-      this.particles.radius[i] = 1;
+      this.particles.radius[i] = this.particles.mass[i] * 0.001;
 
-      this.particles.x[i] = Math.cos(angle) * Math.random() * 500;
-      this.particles.y[i] = Math.sin(angle) * Math.random() * 500;
+      this.particles.x[i] = (Math.random() - 0.5) * this.world_size;
+      this.particles.y[i] = (Math.random() - 0.5) * this.world_size;
 
       this.particles.x[i] = this.particles.x[i] + center;
       this.particles.y[i] = this.particles.y[i] + center;
 
-      this.particles.prev_x[i] = this.particles.x[i] - Math.random() / 1000;
-      this.particles.prev_y[i] = this.particles.y[i] - Math.random() / 1000;
+      this.particles.prev_x[i] = this.particles.x[i] - (Math.random() - 0.5) / 100;
+      this.particles.prev_y[i] = this.particles.y[i] - (Math.random() - 0.5) / 100;
     }
   }
 
@@ -66,7 +68,7 @@ export class World {
     try {
       for (let i = 0; i < this.sub_stepping; i++) {
         this.resolve_collisions();
-        this.resolve_space_constraints();
+        await this.resolve_space_constraints();
         await this.update_particles_pos();
       }
 
@@ -130,5 +132,22 @@ export class World {
 
   resolve_collisions() {}
 
-  resolve_space_constraints() {}
+  async resolve_space_constraints() {
+    const chunk_size = this.particles.count / CPU_CORES;
+    const promises: Promise<null>[] = [];
+
+    for (let sub_i = 0; sub_i < CPU_CORES; sub_i++) {
+      promises.push(
+        this.etp_apply_constraints.do_work([
+          sub_i * chunk_size,
+          (sub_i + 1) * chunk_size,
+          this.world_size,
+          this.particles.x,
+          this.particles.y,
+        ]),
+      );
+    }
+
+    await Promise.all(promises);
+  }
 }
