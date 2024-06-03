@@ -5,6 +5,7 @@ import { main as gravity_etps, Params as GravityETPsParams } from "./ETPs/gravit
 import { main as upd_pos_etps, Params as UpdPosETPsParams } from "./ETPs/upd_pos";
 import { main as apply_constr_etps, Params as ApplCnstrETPsParams } from "./ETPs/apply_constraints";
 import { readFileSync } from "node:fs";
+import { VectorMath } from "./VectorMath";
 
 type WorldParams = {
   particles_count: number;
@@ -12,6 +13,7 @@ type WorldParams = {
   g_constant?: number;
   sub_stepping?: number;
   time_delta?: number;
+  collide_responsibility?: number;
 };
 
 const CPU_CORES = cpus().length;
@@ -28,8 +30,16 @@ export class World {
   sub_stepping: number;
   time_delta: number;
   time_delta_subbed: number;
+  collide_responsibility: number;
 
-  constructor({ particles_count, world_size, g_constant, sub_stepping, time_delta }: WorldParams) {
+  constructor({
+    particles_count,
+    world_size,
+    g_constant,
+    sub_stepping,
+    time_delta,
+    collide_responsibility,
+  }: WorldParams) {
     this.particles = new ParticleContainer(particles_count);
     this.etp_gravity = new ETP(CPU_CORES, gravity_etps, ETP_DEPS);
     this.etp_upd_pos = new ETP(CPU_CORES, upd_pos_etps, ETP_DEPS);
@@ -40,40 +50,40 @@ export class World {
     this.sub_stepping = sub_stepping || 8;
     this.time_delta = time_delta || 0.01;
     this.time_delta_subbed = this.time_delta / this.sub_stepping;
+    this.collide_responsibility = collide_responsibility || 0.375;
 
     if (particles_count % CPU_CORES !== 0) {
       throw new Error(`particles=${particles_count} % cpu_cores=${CPU_CORES} should equal 0!`);
     }
   }
 
-  randomize_particles() {
+  randomize_particles(space_multiplier: number, radius_multiplier: number) {
     const center = this.world_size / 2;
 
     for (let i = 0; i < this.particles.count; i++) {
-      this.particles.mass[i] = Math.random() * 10;
-      this.particles.radius[i] = this.particles.mass[i] * 0.001;
+      this.particles.mass[i] = Math.random() * 2500;
+      this.particles.radius[i] = 25;
 
-      this.particles.x[i] = (Math.random() - 0.5) * this.world_size;
-      this.particles.y[i] = (Math.random() - 0.5) * this.world_size;
+      this.particles.x[i] = (Math.random() - 0.5) * 20000;
+      this.particles.y[i] = (Math.random() - 0.5) * 15000;
 
       this.particles.x[i] = this.particles.x[i] + center;
       this.particles.y[i] = this.particles.y[i] + center;
 
-      this.particles.prev_x[i] = this.particles.x[i] - (Math.random() - 0.5) / 100;
-      this.particles.prev_y[i] = this.particles.y[i] - (Math.random() - 0.5) / 100;
+      this.particles.prev_x[i] = this.particles.x[i] - (Math.random() - 0.5) * 1;
+      this.particles.prev_y[i] = this.particles.y[i] - (Math.random() - 0.5) * 60;
     }
   }
 
   async update() {
     try {
+      await this.update_gravity_acc();
+      await this.update_particles_pos();
+
       for (let i = 0; i < this.sub_stepping; i++) {
         this.resolve_collisions();
         await this.resolve_space_constraints();
-        await this.update_particles_pos();
       }
-
-      await this.update_gravity_acc();
-      await this.update_particles_pos();
     } catch (e) {
       console.error(e);
     }
@@ -130,7 +140,50 @@ export class World {
     }
   }
 
-  resolve_collisions() {}
+  resolve_collisions() {
+    for (let i = 0; i < this.particles.count; i++) {
+      for (let j = i; j < this.particles.count; j++) {
+        if (i === j) continue;
+
+        // check n resolve collisions
+        const velocity = VectorMath.subtract(
+          [this.particles.x[i], this.particles.y[i]],
+          [this.particles.x[j], this.particles.y[j]],
+        );
+
+        const distance_squared = VectorMath.lengthSquared(velocity);
+        const distance_minimal = this.particles.radius[i] + this.particles.radius[j];
+
+        if (distance_squared >= distance_minimal * distance_minimal) continue;
+
+        const distance = Math.sqrt(distance_squared);
+        const diff = VectorMath.divide(velocity, distance);
+
+        const common_mass = this.particles.mass[i] + this.particles.mass[j];
+        const particle1_mass_ratio = this.particles.mass[i] / common_mass;
+        const particle2_mass_ratio = this.particles.mass[j] / common_mass;
+
+        const delta = this.collide_responsibility * (distance - distance_minimal);
+
+        // Upd positions
+        const particle1_position = VectorMath.subtract(
+          [this.particles.x[i], this.particles.y[i]],
+          VectorMath.divide(VectorMath.multiply(diff, particle2_mass_ratio * delta), 2),
+        );
+
+        this.particles.x[i] = particle1_position[0];
+        this.particles.y[i] = particle1_position[1];
+
+        const particle2_position = VectorMath.add(
+          [this.particles.x[j], this.particles.y[j]],
+          VectorMath.divide(VectorMath.multiply(diff, particle1_mass_ratio * delta), 2),
+        );
+
+        this.particles.x[j] = particle2_position[0];
+        this.particles.y[j] = particle2_position[1];
+      }
+    }
+  }
 
   async resolve_space_constraints() {
     const chunk_size = this.particles.count / CPU_CORES;

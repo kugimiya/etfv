@@ -2,6 +2,8 @@ import { createCanvas } from "canvas";
 import { World } from "./core/World";
 import { mkdirSync, writeFileSync } from "fs";
 
+const space_multiplier = 40;
+const radius_multiplier = 10;
 const canvas = createCanvas(1000, 1000);
 const ctx = canvas.getContext("2d");
 
@@ -11,14 +13,15 @@ try {
 
 async function main() {
   let tick = 0;
-  const shouldDraw = false;
+  const shouldDraw = true;
   const world = new World({
-    particles_count: 1024 * (1024 * 16),
-    time_delta: 0.1,
-    sub_stepping: 1,
+    world_size: 1000 * space_multiplier,
+    particles_count: 1024 * 16,
+    time_delta: 0.01,
+    sub_stepping: 12,
   });
 
-  world.randomize_particles();
+  world.randomize_particles(space_multiplier, radius_multiplier);
   await world.etp_gravity.init();
   await world.etp_upd_pos.init();
   await world.etp_apply_constraints.init();
@@ -36,13 +39,16 @@ async function main() {
       ctx.fill();
 
       for (let i = 0; i < world.particles.count; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.min(Math.max(world.particles.radius[i] * 100, 0), 1)})`;
-        ctx.fillRect(
-          world.particles.x[i] - (world.particles.radius[i] * 100) / 2,
-          world.particles.y[i] - (world.particles.radius[i] * 100) / 2,
-          world.particles.radius[i] * 100,
-          world.particles.radius[i] * 100,
+        ctx.fillStyle = `rgba(0,0,0,0)`;
+        ctx.beginPath();
+        ctx.arc(
+          world.particles.x[i] / space_multiplier,
+          world.particles.y[i] / space_multiplier,
+          world.particles.radius[i] / space_multiplier,
+          0,
+          360,
         );
+        ctx.stroke();
         ctx.fill();
       }
 
