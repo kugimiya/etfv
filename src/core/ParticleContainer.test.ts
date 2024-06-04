@@ -4,11 +4,11 @@ import { ParticleContainer } from "./ParticleContainer";
 
 describe("Inspect .make_array()", () => {
   it("returns correct array", () => {
-    assert.equal(2, ParticleContainer.make_array(2).length);
+    assert.equal(2, ParticleContainer.make_float_array(2).length);
   });
 
   it("fails when count = -8", () => {
-    assert.throws(() => ParticleContainer.make_array(-8));
+    assert.throws(() => ParticleContainer.make_float_array(-8));
   });
 });
 

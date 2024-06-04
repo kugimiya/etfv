@@ -3,7 +3,7 @@ import { IVectorMath } from "../VectorMath";
 // declare utility class as mocked variable for typecheck :^)
 const VectorMath: IVectorMath = null as unknown as IVectorMath;
 
-export type Params = [index_from: number, index_to: number, world_size: number, x: Float64Array, y: Float64Array];
+export type Params = [index_from: number, index_to: number, world_size: number, x: Float32Array, y: Float32Array];
 
 export async function main(params: Params) {
   const [index_from, index_to, world_size, x, y] = params;

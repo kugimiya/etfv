@@ -3,3 +3,5 @@ node_modules
 output
 out.mp4
 .DS_Store
+.idea
+
