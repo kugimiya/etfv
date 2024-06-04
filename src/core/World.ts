@@ -15,6 +15,7 @@ type WorldParams = {
   time_delta?: number;
   collide_responsibility?: number;
   chunk_size?: number;
+  do_collisions_resolving?: boolean;
 };
 
 const CPU_CORES = cpus().length;
@@ -37,6 +38,7 @@ export class World {
   time_delta_subbed: number;
   collide_responsibility: number;
   chunk_size: number;
+  do_collisions_resolving: boolean;
 
   constructor({
     particles_count,
@@ -46,6 +48,7 @@ export class World {
     time_delta,
     collide_responsibility,
     chunk_size,
+    do_collisions_resolving,
   }: WorldParams) {
     this.particles = new ParticleContainer(particles_count);
     this.etp_gravity = new ETP(CPU_CORES, gravity_etps, ETP_DEPS);
@@ -60,6 +63,8 @@ export class World {
     this.time_delta_subbed = this.time_delta / this.sub_stepping;
     this.collide_responsibility = collide_responsibility || 0.375;
     this.chunk_size = chunk_size || 2;
+
+    this.do_collisions_resolving = do_collisions_resolving === undefined ? true : do_collisions_resolving;
 
     if (particles_count % CPU_CORES !== 0) {
       throw new Error(`particles=${particles_count} % cpu_cores=${CPU_CORES} should equal 0!`);
@@ -96,10 +101,12 @@ export class World {
       await this.update_gravity_acc();
       await this.update_particles_pos();
 
-      for (let i = 0; i < this.sub_stepping; i++) {
-        await this.resolve_collisions_chunked();
-        await this.resolve_space_constraints();
-        await this.update_particles_pos();
+      if (this.do_collisions_resolving) {
+        for (let i = 0; i < this.sub_stepping; i++) {
+          await this.resolve_collisions_chunked();
+          await this.resolve_space_constraints();
+          await this.update_particles_pos();
+        }
       }
     } catch (e) {
       console.error(e);

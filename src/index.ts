@@ -24,7 +24,7 @@ async function main() {
   const x_range = 40000; // center +- range / 2
   const y_range = 40000; // center +- range / 2
   const x_velocity_multiplier = 2;
-  const y_velocity_multiplier = 2;
+  const y_velocity_multiplier = 40;
 
   const canvas = createCanvas(world_size_base, world_size_base);
   const ctx = canvas.getContext("2d");
@@ -64,8 +64,8 @@ async function main() {
       ctx.fillRect(0, 0, world_size_base, world_size_base);
       ctx.fill();
 
-      ctx.strokeStyle = `rgba(0,0,0,0)`;
-      ctx.fillStyle = `rgba(0,0,0,0.1)`;
+      ctx.strokeStyle = `rgba(0,0,0,0.1)`;
+      ctx.fillStyle = `rgba(0,0,0,0.2)`;
 
       for (let i = 0; i < world.particles.count; i++) {
         ctx.beginPath();
