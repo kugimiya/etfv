@@ -65,10 +65,6 @@ export class World {
     this.chunk_size = chunk_size || 2;
 
     this.do_collisions_resolving = do_collisions_resolving === undefined ? true : do_collisions_resolving;
-
-    if (particles_count % CPU_CORES !== 0) {
-      throw new Error(`particles=${particles_count} % cpu_cores=${CPU_CORES} should equal 0!`);
-    }
   }
 
   randomize_particles(
@@ -114,14 +110,14 @@ export class World {
   }
 
   async update_particles_pos() {
-    const chunk_size = this.particles.count / CPU_CORES;
+    const processing_range_base = Math.ceil(this.particles.count / CPU_CORES);
     const promises: Promise<null>[] = [];
 
     for (let sub_i = 0; sub_i < CPU_CORES; sub_i++) {
       promises.push(
         this.etp_upd_pos.do_work([
-          sub_i * chunk_size,
-          (sub_i + 1) * chunk_size,
+          sub_i * processing_range_base,
+          (sub_i + 1) * processing_range_base,
           this.time_delta_subbed,
           this.chunk_size,
           this.particles.x,
@@ -167,7 +163,7 @@ export class World {
   }
 
   async resolve_collisions_chunked() {
-    const promises_first_stage: Promise<null>[] = [];
+    const promises: Promise<null>[] = [];
 
     for (let x = 1; x < this.world_size / this.chunk_size; x += 3) {
       const collected_chunks_x: number[] = [];
@@ -177,7 +173,7 @@ export class World {
         collected_chunks_y.push(y);
       }
 
-      promises_first_stage.push(
+      promises.push(
         this.etp_collider.do_work([
           this.collide_responsibility,
           collected_chunks_x,
@@ -199,7 +195,7 @@ export class World {
         collected_chunks_y.push(y);
       }
 
-      promises_first_stage.push(
+      promises.push(
         this.etp_collider.do_work([
           this.collide_responsibility,
           collected_chunks_x,
@@ -213,18 +209,18 @@ export class World {
       );
     }
 
-    await Promise.all(promises_first_stage);
+    await Promise.all(promises);
   }
 
   async resolve_space_constraints() {
-    const chunk_size = this.particles.count / CPU_CORES;
+    const processing_range_base = Math.ceil(this.particles.count / CPU_CORES);
     const promises: Promise<null>[] = [];
 
     for (let sub_i = 0; sub_i < CPU_CORES; sub_i++) {
       promises.push(
         this.etp_apply_constraints.do_work([
-          sub_i * chunk_size,
-          (sub_i + 1) * chunk_size,
+          sub_i * processing_range_base,
+          (sub_i + 1) * processing_range_base,
           this.world_size,
           this.particles.x,
           this.particles.y,

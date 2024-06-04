@@ -35,6 +35,8 @@ export async function main(params: Params) {
   ] = params;
 
   for (let i = index_from; i < index_to; i++) {
+    if (i >= x.length) continue;
+
     const velocity = VectorMath.subtract([x[i], y[i]], [prev_x[i], prev_y[i]]);
 
     prev_x[i] = x[i];

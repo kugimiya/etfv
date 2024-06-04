@@ -9,6 +9,8 @@ export async function main(params: Params) {
   const [index_from, index_to, world_size, x, y] = params;
 
   for (let i = index_from; i < index_to; i++) {
+    if (i >= x.length) continue;
+
     if (x[i] > world_size) {
       x[i] = world_size - 1;
     }

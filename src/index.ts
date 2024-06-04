@@ -13,7 +13,7 @@ async function main() {
   // init opts
   const world_size_base = 1000;
   const world_size_multiplier = 65;
-  const particles_count_base = 1024; // multiplied by cpu cores below
+  const particles_count_base = 1024 * 128;
   const chunk_size = 650;
   const sub_stepping = 12;
   const time_delta = 1 / 60; // fps unow :^)
@@ -23,26 +23,24 @@ async function main() {
   const radius = 25;
   const x_range = 40000; // center +- range / 2
   const y_range = 40000; // center +- range / 2
-  const x_velocity_multiplier = 2;
-  const y_velocity_multiplier = 40;
+  const x_velocity_multiplier = 0;
+  const y_velocity_multiplier = 0;
 
   const canvas = createCanvas(world_size_base, world_size_base);
   const ctx = canvas.getContext("2d");
   const shouldDraw = true;
 
   console.log(
-    [
-      `particles_count=${particles_count_base * CPU_CORES}`,
-      `world_size=${world_size_multiplier * world_size_base}`,
-    ].join("\n"),
+    [`particles_count=${particles_count_base}`, `world_size=${world_size_multiplier * world_size_base}`].join("\n"),
   );
 
   const world = new World({
     world_size: world_size_multiplier * world_size_base,
-    particles_count: particles_count_base * CPU_CORES,
+    particles_count: particles_count_base,
     time_delta,
     sub_stepping,
     chunk_size,
+    do_collisions_resolving: true,
   });
 
   world.randomize_particles(mass_multiplier, radius, x_range, y_range, x_velocity_multiplier, y_velocity_multiplier);
@@ -60,6 +58,7 @@ async function main() {
 
     // draw lmao
     if (shouldDraw) {
+      console.time(`frame ${tick} draw time`);
       ctx.fillStyle = `rgba(255,255,255,1)`;
       ctx.fillRect(0, 0, world_size_base, world_size_base);
       ctx.fill();
@@ -82,6 +81,7 @@ async function main() {
 
       const png_buff = canvas.toBuffer("image/png", { compressionLevel: 3, filters: canvas.PNG_FILTER_NONE });
       writeFileSync(`output/frame_${String(tick).padStart(6, "0")}.png`, png_buff);
+      console.timeEnd(`frame ${tick} draw time`);
     }
   }
 }
