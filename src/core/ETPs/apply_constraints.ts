@@ -11,20 +11,20 @@ export async function main(params: Params) {
   for (let i = index_from; i < index_to; i++) {
     if (i >= x.length) continue;
 
-    if (x[i] > world_size) {
-      x[i] = world_size - 1;
+    if (x[i] > world_size - 25) {
+      x[i] = world_size - 25;
     }
 
-    if (x[i] < 0) {
-      x[i] = 1;
+    if (x[i] < 25) {
+      x[i] = 25;
     }
 
-    if (y[i] > world_size) {
-      y[i] = world_size - 1;
+    if (y[i] > world_size - 25) {
+      y[i] = world_size - 25;
     }
 
-    if (y[i] < 0) {
-      y[i] = 1;
+    if (y[i] < 25) {
+      y[i] = 25;
     }
   }
 

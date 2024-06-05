@@ -23,9 +23,15 @@ export class ParticleContainer {
   mass: Float32Array;
   radius: Float32Array;
 
-  chunk_index_store: Int32Array;
+  pairs_for_resolve: Int32Array[];
 
-  constructor(count: number) {
+  indexes_sorted_by_x: Int32Array;
+  x_b_starts: Float32Array;
+  x_b_ends: Float32Array;
+  y_b_starts: Float32Array;
+  y_b_ends: Float32Array;
+
+  constructor(count: number, cpu_cores: number) {
     this.count = count;
 
     this.x = ParticleContainer.make_float_array(count);
@@ -43,7 +49,23 @@ export class ParticleContainer {
     this.mass = ParticleContainer.make_float_array(count);
     this.radius = ParticleContainer.make_float_array(count);
 
-    this.chunk_index_store = ParticleContainer.make_int_array(count);
+    // fixme: here we could meet case, when one particle can contain more than
+    // 100 particles for collide resolving
+    this.pairs_for_resolve = new Array(cpu_cores);
+
+    for (let i = 0; i < cpu_cores; i++) {
+      this.pairs_for_resolve[i] = ParticleContainer.make_int_array(count * 500 * 2);
+    }
+
+    this.indexes_sorted_by_x = ParticleContainer.make_int_array(count);
+    for (let i = 0; i < count; i++) {
+      this.indexes_sorted_by_x[i] = i;
+    }
+
+    this.x_b_starts = ParticleContainer.make_float_array(count);
+    this.x_b_ends = ParticleContainer.make_float_array(count);
+    this.y_b_starts = ParticleContainer.make_float_array(count);
+    this.y_b_ends = ParticleContainer.make_float_array(count);
   }
 
   static make_float_array(count: number) {

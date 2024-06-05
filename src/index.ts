@@ -19,19 +19,24 @@ async function main() {
   const time_delta = 1 / 60; // fps unow :^)
 
   // randomize particle positions opts
-  const mass_multiplier = 2500;
+  const mass_multiplier = 250;
   const radius = 25;
-  const x_range = 40000; // center +- range / 2
-  const y_range = 40000; // center +- range / 2
+  const x_range = 65000; // center +- range / 2
+  const y_range = 65000; // center +- range / 2
   const x_velocity_multiplier = 0;
   const y_velocity_multiplier = 0;
 
   const canvas = createCanvas(world_size_base, world_size_base);
   const ctx = canvas.getContext("2d");
   const shouldDraw = true;
+  const do_collisions_resolving = true;
 
   console.log(
-    [`particles_count=${particles_count_base}`, `world_size=${world_size_multiplier * world_size_base}`].join("\n"),
+    [
+      `cpu_cores=${CPU_CORES}`,
+      `particles_count=${particles_count_base}`,
+      `world_size=${world_size_multiplier * world_size_base}`,
+    ].join("\n"),
   );
 
   const world = new World({
@@ -40,22 +45,20 @@ async function main() {
     time_delta,
     sub_stepping,
     chunk_size,
-    do_collisions_resolving: true,
+    do_collisions_resolving,
   });
 
   world.randomize_particles(mass_multiplier, radius, x_range, y_range, x_velocity_multiplier, y_velocity_multiplier);
   await world.etp_gravity.init();
   await world.etp_upd_pos.init();
   await world.etp_apply_constraints.init();
-  await world.etp_collider.init();
+  await world.etp_collider_bounded.init();
+  await world.etp_bound_calc.init();
 
   let tick = 0;
-  while (true) {
-    console.time(`frame ${tick} calc time`);
-    await world.update();
-    console.timeEnd(`frame ${tick} calc time`);
-    tick += 1;
 
+  // 5 minutes for 60fps video
+  while (tick < 3600 * 5) {
     // draw lmao
     if (shouldDraw) {
       console.time(`frame ${tick} draw time`);
@@ -83,7 +86,18 @@ async function main() {
       writeFileSync(`output/frame_${String(tick).padStart(6, "0")}.png`, png_buff);
       console.timeEnd(`frame ${tick} draw time`);
     }
+
+    console.time(`frame ${tick} calc time`);
+    await world.update();
+    console.timeEnd(`frame ${tick} calc time`);
+    tick += 1;
   }
+
+  world.etp_gravity.terminate();
+  world.etp_upd_pos.terminate();
+  world.etp_apply_constraints.terminate();
+  world.etp_collider_bounded.terminate();
+  world.etp_bound_calc.terminate();
 }
 
 main().catch(console.error);

@@ -16,11 +16,11 @@ describe("inspect constructing", () => {
   const elm_count = 24;
 
   it("constructs", () => {
-    assert.doesNotThrow(() => new ParticleContainer(elm_count));
+    assert.doesNotThrow(() => new ParticleContainer(elm_count, 1));
   });
 
   it(`each array contains ${elm_count} elements`, () => {
-    const container = new ParticleContainer(elm_count);
+    const container = new ParticleContainer(elm_count, 1);
 
     assert.deepEqual(new Array(8).fill(elm_count), [
       container.x.length,
@@ -38,7 +38,7 @@ describe("inspect constructing", () => {
   });
 
   it("each array dont copy of one array", () => {
-    const container = new ParticleContainer(elm_count);
+    const container = new ParticleContainer(elm_count, 1);
 
     assert.notEqual(container.x, container.y);
     assert.notEqual(container.y, container.z);
